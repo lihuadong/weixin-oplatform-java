@@ -12,13 +12,12 @@ package weixin.oplatform;
 import java.sql.SQLException;
 import java.util.TimerTask;
 
-import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 import org.apache.log4j.Logger;
 
 import jingubang.th3rd.service.MemcachedManager;
 import jingubang.util.db.C3p0Utils;
-import jingubang.util.tools.DateTimeUtil;
+import weixin.util.DateTimeUtil;
 
 
 /**

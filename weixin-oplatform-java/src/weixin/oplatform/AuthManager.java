@@ -20,8 +20,8 @@ import java.util.Properties;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.ws.Response;
 
-import org.apache.commons.dbutils.QueryRunner;
 import org.apache.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -32,15 +32,14 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
-import com.qq.weixin.mp.aes.AesException;
-import com.qq.weixin.mp.aes.WXBizMsgCrypt;
+import weixin.aes.AesException;
+import weixin.aes.WXBizMsgCrypt;
 
-import jingubang.th3rd.service.MemcachedManager;
-import jingubang.util.db.C3p0Utils;
-import jingubang.util.http.HttpsDataManager;
-import jingubang.util.tools.DateTimeUtil;
-import weixin.msg.Response;
-import weixin.msg.builder.ResponseCSMsgBuilder;
+import weixin.msg.builder.RequestMsgBuilder;
+import weixin.msg.builder.ResponseMsgBuilder;
+import weixin.msg.model.normal.Text;
+import weixin.util.DateTimeUtil;
+import weixin.util.HTTPSDataManager;
 
 
 public class AuthManager {
@@ -50,15 +49,14 @@ public class AuthManager {
 	private static String component_appsecret;
 	
 	static{
-				Properties prop = new Properties();  
-				InputStream in = AuthManager.class.getResourceAsStream("/weixin3rd.properties"); 
-				
-				try {  
-		            prop.load(in);  
-		        } catch (IOException e) {  
-		            e.printStackTrace();  
-		        }  	
-		
+			Properties prop = new Properties();  
+			InputStream in = AuthManager.class.getResourceAsStream("/weixin3rd.properties"); 
+			
+			try {  
+	            prop.load(in);  
+	        } catch (IOException e) {  
+	            e.printStackTrace();  
+	        }  	
 			component_appid = prop.getProperty("component_appid");  
 			component_appsecret = prop.getProperty("component_appsecret");  
 	}
@@ -83,7 +81,7 @@ public class AuthManager {
 					reqJSON.put("component_verify_ticket",component_verify_ticket);
 	
 					String data =reqJSON.toString();
-					String res  = HttpsDataManager.sendData(url, data);		
+					String res  = HTTPSDataManager.sendData(url, data);		
 	
 					JSONObject   resJSON   = new JSONObject(res);
 					
@@ -113,7 +111,7 @@ public class AuthManager {
 					JSONObject   reqJSON   = new JSONObject();
 					reqJSON.put("component_appid", component_appid);
 					String data =reqJSON.toString();
-					String res  = HttpsDataManager.sendData(url, data);
+					String res  = HTTPSDataManager.sendData(url, data);
 					
 					logger.info("AuthManager-getPreAuthCode:"+res);
 					JSONObject   resJSON   = new JSONObject(res);
@@ -145,11 +143,14 @@ public class AuthManager {
 				reqJSON.put("authorization_code", authorization_code);				
 				String data =reqJSON.toString();
 				
-				MemcachedManager  mc    = MemcachedManager.getMemcacheManager();
-				String component_access_token = (String)mc.get("component_access_token");
+				//MemcachedManager  mc    = MemcachedManager.getMemcacheManager();
+				//String component_access_token = (String)mc.get("component_access_token");
+				String component_access_token = null;
+				
+				/////////  @todo 需要自己来处理完成
 				
 				String url = "https://api.weixin.qq.com/cgi-bin/component/api_query_auth?component_access_token="+component_access_token;
-				String res  = HttpsDataManager.sendData(url, data);
+				String res  = HTTPSDataManager.sendData(url, data);
 			
 				logger.info("AuthManager-getAuthorizerAccessToken:"+res);
 			
@@ -168,10 +169,10 @@ public class AuthManager {
 						   		 		authorizer_refresh_token  =  authorization_info.getString("authorizer_refresh_token");
 									
 
-				mc.setKeyValue(authorizer_appid+"4authorizer_access_token", authorizer_access_token);
-				mc.setKeyValue(authorizer_appid+"4authorizer_refresh_token", authorizer_refresh_token);	
+				//mc.setKeyValue(authorizer_appid+"4authorizer_access_token", authorizer_access_token);
+				//mc.setKeyValue(authorizer_appid+"4authorizer_refresh_token", authorizer_refresh_token);	
 				
-		        mc.setKeyValue(authorizer_appid+"4authorizer_token_time", DateTimeUtil.getCurrentTime());//令牌获取时间
+		        //mc.setKeyValue(authorizer_appid+"4authorizer_token_time", DateTimeUtil.getCurrentTime());//令牌获取时间
 									
 				JSONArray  func_info  =  authorization_info.getJSONArray("func_info");	
 				//本次授权进入数据库		
@@ -207,11 +208,13 @@ public class AuthManager {
 	 */
 	public  void refreshAuthorizerAccessToken(String authorizer_appid){
 		
-				MemcachedManager  mc    = MemcachedManager.getMemcacheManager();
+				//MemcachedManager  mc    = MemcachedManager.getMemcacheManager();
+				//String component_access_token  = (String) mc.get("component_access_token");
 				
-				String component_access_token  = (String) mc.get("component_access_token");
+				String component_access_token  = null;
 				String url  = "https://api.weixin.qq.com/cgi-bin/component/api_authorizer_token?component_access_token="+component_access_token;
-				String authorizer_refresh_token  = (String) mc.get(authorizer_appid+"4authorizer_refresh_token");	
+				//String authorizer_refresh_token  = (String) mc.get(authorizer_appid+"4authorizer_refresh_token");	
+				String authorizer_refresh_token  = null;	
 				
 				JSONObject   reqJSON   = new JSONObject();
 				reqJSON.put("component_appid", component_appid);
@@ -219,15 +222,15 @@ public class AuthManager {
 				reqJSON.put("authorizer_refresh_token", authorizer_refresh_token);
 				
 				String data =reqJSON.toString();
-				String res  = HttpsDataManager.sendData(url, data);
+				String res  = HTTPSDataManager.sendData(url, data);
 				JSONObject   resJSON   = new JSONObject(res);
 		
 					logger.info("AuthManager-refreshAuthorizerAccessToken:"+res);
 				
 				if(resJSON.get("authorizer_access_token")!=null){			
-						mc.setKeyValue(authorizer_appid+"4authorizer_access_token", resJSON.getString("authorizer_access_token"));
-						mc.setKeyValue(authorizer_appid+"4authorizer_refresh_token", resJSON.getString("authorizer_refresh_token"));
-				        mc.setKeyValue(authorizer_appid+"4authorizer_token_time", DateTimeUtil.getCurrentDate());//令牌获取时间
+						//mc.setKeyValue(authorizer_appid+"4authorizer_access_token", resJSON.getString("authorizer_access_token"));
+						//mc.setKeyValue(authorizer_appid+"4authorizer_refresh_token", resJSON.getString("authorizer_refresh_token"));
+				        //mc.setKeyValue(authorizer_appid+"4authorizer_token_time", DateTimeUtil.getCurrentDate());//令牌获取时间
 				}else{
 					logger.info("AuthManager-refreshAuthorizerAccessToken:fail");
 				}
@@ -246,8 +249,9 @@ public class AuthManager {
 	 */
 	public JSONObject getAuthorizerInfo(String authorizer_appid){
 		
-		MemcachedManager  mc    = MemcachedManager.getMemcacheManager();		
-		String component_access_token  = (String) mc.get("component_access_token");
+		//MemcachedManager  mc    = MemcachedManager.getMemcacheManager();		
+		//String component_access_token  = (String) mc.get("component_access_token");
+		String component_access_token  = null;
 		String url  = "https://api.weixin.qq.com/cgi-bin/component/api_get_authorizer_info?component_access_token="+component_access_token;
 				
 		JSONObject   reqJSON   = new JSONObject();
@@ -255,7 +259,7 @@ public class AuthManager {
 		reqJSON.put("authorizer_appid", authorizer_appid);		
 
 		String data =reqJSON.toString();
-		String res  = HttpsDataManager.sendData(url, data);
+		String res  = HTTPSDataManager.sendData(url, data);
 		JSONObject   resJSON   = new JSONObject(res);
 		
 		logger.info("AuthManager-getAuthorizerInfo:"+res);
@@ -419,12 +423,12 @@ public class AuthManager {
 						+ "VALUES('" + authorizer_appid + "','" + authorizer_access_token + "','" + authorizer_refresh_token
 						+ "','" + func_info + "')";
 		
-				try {
-					QueryRunner runner = new QueryRunner(C3p0Utils.getDataSource());
-					runner.update(sql);
-				} catch (SQLException e) {
-					e.printStackTrace();
-				}
+//				try {
+//					//QueryRunner runner = new QueryRunner(C3p0Utils.getDataSource());
+//					runner.update(sql);
+//				} catch (SQLException e) {
+//					e.printStackTrace();
+//				}
 		
 	 }
 	 
@@ -446,18 +450,18 @@ public class AuthManager {
 	  */
 	 public void upateAuthorizerInfor(String  authorizer_appid,String nick_name,String head_img,String user_name,String principal_name,String qrcode_url,String authorizer_info,String authorization_info){
 		 
-			QueryRunner runner = new QueryRunner(C3p0Utils.getDataSource());
-	
-			String sql = " update `wx_authorizer` set `nick_name` ='" + nick_name + "', `head_img` ='" + head_img
-					+ "',`user_name`='" + user_name + "' ,`principal_name`='" + principal_name + "',`qrcode_url`='"
-					+ qrcode_url + "',`authorizer_info`='" + authorizer_info + "',`authorization_info`='"
-					+ authorization_info + "' where authorizer_appid='" + authorizer_appid + "'";
-	
-			try {
-				runner.update(sql);
-			} catch (SQLException e) {
-				e.printStackTrace();
-			}
+//			QueryRunner runner = new QueryRunner(C3p0Utils.getDataSource());
+//	
+//			String sql = " update `wx_authorizer` set `nick_name` ='" + nick_name + "', `head_img` ='" + head_img
+//					+ "',`user_name`='" + user_name + "' ,`principal_name`='" + principal_name + "',`qrcode_url`='"
+//					+ qrcode_url + "',`authorizer_info`='" + authorizer_info + "',`authorization_info`='"
+//					+ authorization_info + "' where authorizer_appid='" + authorizer_appid + "'";
+//	
+//			try {
+//				runner.update(sql);
+//			} catch (SQLException e) {
+//				e.printStackTrace();
+//			}
 		
 		 
 	 }
@@ -472,15 +476,15 @@ public class AuthManager {
 	  */
 	 public void componentVerifyTicket(String component_verify_ticket){
 		 
-		 QueryRunner runner = new QueryRunner(C3p0Utils.getDataSource());
-		 String sql = " INSERT INTO `wx_thir3d`(`component_verify_ticket`) "
-		 		+ "VALUES('"+component_verify_ticket+"')";	
-			
-		    try {
-				runner.update(sql);
-			} catch (SQLException e) {
-				e.printStackTrace();
-			}
+//		 QueryRunner runner = new QueryRunner(C3p0Utils.getDataSource());
+//		 String sql = " INSERT INTO `wx_thir3d`(`component_verify_ticket`) "
+//		 		+ "VALUES('"+component_verify_ticket+"')";	
+//			
+//		    try {
+//				runner.update(sql);
+//			} catch (SQLException e) {
+//				e.printStackTrace();
+//			}
 		 
 	 }
 	 
@@ -501,10 +505,11 @@ public class AuthManager {
 	 * @exception 
 	 * @since  0.0.1
 		 */
-	 public void weixinOpenVertify(String query_auth_code,weixin.msg.model.cs.Text csText){
+	 public void weixinOpenVertify(String query_auth_code,Text csText){
 			
-			MemcachedManager  mc    = MemcachedManager.getMemcacheManager();
-			String component_access_token = (String)mc.get("component_access_token");
+			//MemcachedManager  mc    = MemcachedManager.getMemcacheManager();
+			//String component_access_token = (String)mc.get("component_access_token");
+			String component_access_token = null;
 			
 			JSONObject  authurizerAccessTokenInfo  = getAuthInfo(query_auth_code);
 			
@@ -513,13 +518,13 @@ public class AuthManager {
 			String 	authorizer_appid   = authorization_info.getString("authorizer_appid");
 	        String   	authorizer_access_token   =  authorization_info.getString("authorizer_access_token");
 			       
-	        ResponseCSMsgBuilder  rcsMsg  = new ResponseCSMsgBuilder();
-	        String rcsJSON  = rcsMsg.text(csText, "");
+//	        ResponseMsgBuilder  rcsMsg  = new ResponseMsgBuilder();
+//	        String rcsJSON  = rcsMsg.text(csText, "");
 	        
 	        //logger.info("weixin open vertify cs msg:"+rcsJSON);
 	        
-	        Response  res  = new Response(authorizer_access_token);
-	        res.sendCSMsg(rcsJSON);				
+	        //Response  res  = new Response(authorizer_access_token);
+	        //res.sendCSMsg(rcsJSON);				
 		}
 		
 		
