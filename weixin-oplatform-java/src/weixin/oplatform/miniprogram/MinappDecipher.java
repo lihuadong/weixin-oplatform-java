@@ -25,7 +25,7 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.apache.commons.codec.binary.Base64;
+import java.util.Base64;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 /**
@@ -97,7 +97,7 @@ public class MinappDecipher {
     	    String userInfo = null; 
 		try {
 			
-	        byte[] resultByte = decrypt(Base64.decodeBase64(encryptedData), Base64.decodeBase64(sessionKey), Base64.decodeBase64(iv));
+	        byte[] resultByte = decrypt(Base64.getDecoder().decode(encryptedData), Base64.getDecoder().decode(sessionKey), Base64.getDecoder().decode(iv));
 	        if(null != resultByte && resultByte.length > 0){
 	            userInfo = new String(resultByte, "UTF-8");
 	        }
